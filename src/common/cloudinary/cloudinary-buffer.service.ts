@@ -26,7 +26,8 @@ function getMissingCloudinaryEnvVars(): string[] {
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'message' in error) {
-    return String(error.message ?? 'Error desconocido');
+    const message = error.message;
+    return typeof message === 'string' ? message : 'Error desconocido';
   }
 
   return 'Error desconocido';
