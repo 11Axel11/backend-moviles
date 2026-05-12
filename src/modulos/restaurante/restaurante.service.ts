@@ -21,7 +21,7 @@ export class RestauranteService {
 
     if (restauranteExistente) {
       throw new ConflictException(
-        `Ya existe un restaurante con el nombre "${dto.nombre}".`,
+        `Ya existe un restaurante con ese nombre.`,
       );
     }
 
@@ -57,20 +57,22 @@ export class RestauranteService {
           `Ya existe un restaurante con el nombre "${dto.nombre}".`,
         );
       }
-
-    if (file) {
-      const { secure_url } = await uploadBufferToCloudinary(file.buffer,'restaurantes');
-      restaurante.imagenUrl = secure_url;
-    }
-
-    for (const [key, value] of Object.entries(dto)){
-        if (value !== undefined && value !== ''){
-            (restaurante as any)[key] = value;
-        }
-    }
-    return await this.restauranteRepository.save(restaurante);
    }
 
+   if (file) {
+     const { secure_url } = await uploadBufferToCloudinary(
+       file.buffer,
+       'restaurantes',
+     );
+     restaurante.imagenUrl = secure_url;
+   }
+
+   for (const [key, value] of Object.entries(dto)) {
+     if (value !== undefined && value !== '') {
+       (restaurante as any)[key] = value;
+     }
+   }
+       return await this.restauranteRepository.save(restaurante);
   }
 
   async handleEstadoRestaurante(id: number): Promise<{ message: string }> {
@@ -125,4 +127,20 @@ export class RestauranteService {
 
     return {data, total};
   }
+
+
+  async getRestauranteById(idRestaurante: number): Promise<Partial<Restaurante>> {
+
+    const restaurante = await this.restauranteRepository.findOne({
+      where: { idRestaurante },
+      select: ['idRestaurante', 'nombre', 'descripcion', 'ubicacion', 'telefono', 'imagenUrl'],
+    });
+
+    if (!restaurante) {
+      throw new NotFoundException(`Restaurante con id "${idRestaurante}" no encontrado.`);
+    }
+
+    return restaurante;
+  }
+
 }
