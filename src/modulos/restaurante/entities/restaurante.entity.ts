@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Mesa } from 'src/modulos/mesas/entities/mesa.entity';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class Restaurante {
@@ -20,9 +21,9 @@ export class Restaurante {
   @Column()
   imagenUrl!: string;
 
-  @Column({
-    type: 'boolean',
-    default: true,
-  })
+  @Column({type: 'boolean', default: true})
   estado!: boolean;
+
+  @OneToMany(() => Mesa, mesa => mesa.restaurante)
+  mesas!: Mesa[];
 }

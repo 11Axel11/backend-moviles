@@ -19,5 +19,5 @@ export class CrearRestauranteDto {
 
   @IsOptional()
   @IsString()
-  imagenUrl!: string;
+  imagenUrl?: string;
 }

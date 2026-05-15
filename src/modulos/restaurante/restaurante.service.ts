@@ -89,7 +89,7 @@ export class RestauranteService {
   }
 
 
-  async getAllRestaurantes(page?: number, limit?: number): Promise<{data: Restaurante[], total: number}>{
+  async getAllRestaurantesActivos(page?: number, limit?: number): Promise<{data: Restaurante[], total: number}>{
 
     if (!page || !limit) throw new BadRequestException('Los parámetros page y limit son requeridos.');
 
