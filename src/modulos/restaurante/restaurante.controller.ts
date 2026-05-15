@@ -67,12 +67,12 @@ export class RestauranteController {
     }
 
 
-    @Get('GetAllRestaurantes')
+    @Get('GetAllRestaurantesActivos')
     GetAllRestaurantes(
         @Query('page', ParseIntPipe) page: number,
         @Query('limit', ParseIntPipe) limit: number,
     ): Promise<{data: Restaurante[], total: number}>{
-        return this.restauranteService.getAllRestaurantes(page, limit);
+        return this.restauranteService.getAllRestaurantesActivos(page, limit);
     }    
 
 
