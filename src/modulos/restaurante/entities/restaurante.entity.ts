@@ -1,3 +1,4 @@
+import { Horario } from 'src/modulos/horario/entities/horario.entity';
 import { Mesa } from 'src/modulos/mesas/entities/mesa.entity';
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
@@ -26,4 +27,7 @@ export class Restaurante {
 
   @OneToMany(() => Mesa, mesa => mesa.restaurante)
   mesas!: Mesa[];
+
+  @OneToMany(() => Horario, horario => horario.restaurante)
+  horarios!: Horario[];
 }
