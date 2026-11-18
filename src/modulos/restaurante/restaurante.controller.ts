@@ -1,12 +1,13 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { RestauranteService } from './restaurante.service';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { CrearRestauranteDto } from './dto/crearRestauranteDto';
 import { ActualizarRestauranteDto } from './dto/actualizarRestauranteDto';
 import { Restaurante } from './entities/restaurante.entity';
 
 @Controller('restaurante')
+@ApiTags('Restaurantes')
 export class RestauranteController {
 
     constructor(
@@ -71,7 +72,7 @@ export class RestauranteController {
     GetAllRestaurantes(
         @Query('page', ParseIntPipe) page: number,
         @Query('limit', ParseIntPipe) limit: number,
-    ): Promise<{data: Restaurante[], total: number}>{
+    ): Promise<{data: Partial<Restaurante>[], total: number}>{
         return this.restauranteService.getAllRestaurantesActivos(page, limit);
     }    
 

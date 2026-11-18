@@ -6,12 +6,19 @@ import { Repository } from 'typeorm';
 import { CrearRestauranteDto } from './dto/crearRestauranteDto';
 import { uploadBufferToCloudinary } from 'src/common/cloudinary/cloudinary-buffer.service';
 import { ActualizarRestauranteDto } from './dto/actualizarRestauranteDto';
+import { Mesa } from '../mesas/entities/mesa.entity';
+import { Horario } from '../horario/entities/horario.entity';
+import { generateTimeSlots } from '../../common/dates/date-time.helper';
 
 @Injectable()
 export class RestauranteService {
   constructor(
     @InjectRepository(Restaurante)
     private readonly restauranteRepository: Repository<Restaurante>,
+    @InjectRepository(Mesa)
+    private readonly mesaRepository: Repository<Mesa>,
+    @InjectRepository(Horario)
+    private readonly horarioRepository: Repository<Horario>,
   ) {}
 
   async crearRestaurante(dto: CrearRestauranteDto, file: Express.Multer.File): Promise<Restaurante> {
@@ -89,7 +96,7 @@ export class RestauranteService {
   }
 
 
-  async getAllRestaurantesActivos(page?: number, limit?: number): Promise<{data: Restaurante[], total: number}>{
+  async getAllRestaurantesActivos(page?: number, limit?: number): Promise<{data: Partial<Restaurante>[], total: number}>{
 
     if (!page || !limit) throw new BadRequestException('Los parámetros page y limit son requeridos.');
 
@@ -98,14 +105,14 @@ export class RestauranteService {
         skip: (page - 1) * limit,
         take: limit,
         order: {idRestaurante: 'DESC' },
-        select: ['idRestaurante', 'nombre', 'descripcion', 'ubicacion', 'telefono', 'imagenUrl'],
+        select: ['idRestaurante', 'nombre', 'descripcion', 'ubicacion', 'telefono', 'imagenUrl', 'estado'],
     });
 
     if((page - 1) * limit >= total){
         return {data: [], total};
     } 
 
-    return {data, total};
+    return { data: await Promise.all(data.map((restaurante) => this.enrichRestaurant(restaurante))), total };
   }
 
 
@@ -133,14 +140,25 @@ export class RestauranteService {
 
     const restaurante = await this.restauranteRepository.findOne({
       where: { idRestaurante },
-      select: ['idRestaurante', 'nombre', 'descripcion', 'ubicacion', 'telefono', 'imagenUrl'],
+      select: ['idRestaurante', 'nombre', 'descripcion', 'ubicacion', 'telefono', 'imagenUrl', 'estado'],
     });
 
     if (!restaurante) {
       throw new NotFoundException(`Restaurante con id "${idRestaurante}" no encontrado.`);
     }
 
-    return restaurante;
+    return this.enrichRestaurant(restaurante);
+  }
+
+  private async enrichRestaurant(restaurante: Partial<Restaurante>) {
+    const [mesasDisponibles, horarios] = await Promise.all([
+      this.mesaRepository.count({ where: { restaurante: { idRestaurante: restaurante.idRestaurante }, estado: true } }),
+      this.horarioRepository.find({ where: { restaurante: { idRestaurante: restaurante.idRestaurante }, estado: true } }),
+    ]);
+    const horasDisponibles = [...new Set(
+      horarios.flatMap((horario) => generateTimeSlots(horario.horaApertura, horario.horaCierre)),
+    )].sort();
+    return { ...restaurante, mesasDisponibles, horasDisponibles };
   }
 
 }

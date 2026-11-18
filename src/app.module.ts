@@ -5,6 +5,9 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RestauranteModule } from './modulos/restaurante/restaurante.module';
 import { MesasModule } from './modulos/mesas/mesas.module';
+import { HorarioModule } from './modulos/horario/horario.module';
+import { ReservasModule } from './modulos/reservas/reservas.module';
+import { UsuarioModule } from './modulos/usuario/usuario.module';
 
 
 @Module({
@@ -20,11 +23,16 @@ import { MesasModule } from './modulos/mesas/mesas.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: false,
       dropSchema: false,
+      migrationsRun: true,
+      migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
     }),
     RestauranteModule,
     MesasModule,
+    HorarioModule,
+    ReservasModule,
+    UsuarioModule,
   ],
   controllers: [AppController],
   providers: [AppService],

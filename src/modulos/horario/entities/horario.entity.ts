@@ -17,6 +17,9 @@ export class Horario {
   @Column({ length: 60 })
   horaCierre!: string;
 
+  @Column({ type: 'boolean', default: true })
+  estado!: boolean;
+
   @ManyToOne(() => Restaurante, restaurante => restaurante.horarios)
   restaurante!: Restaurante;
 }

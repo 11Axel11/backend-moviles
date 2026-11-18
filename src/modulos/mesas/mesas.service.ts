@@ -1,10 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import { Mesa } from "./entities/mesa.entity";
 import { Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CrearMesaDto } from "./dto/crearMesaDto";
 import { Restaurante } from "../restaurante/entities/restaurante.entity";
 import { ActualizarMesaDto } from "./dto/actualizarMesaDto";
+import { Reserva } from '../reservas/entities/reserva.entity';
+import { EstadoReserva } from '../reservas/entities/reserva.entity';
+import { addMinutesToTime, getDayName, isValidDateOnly, isValidTime, normalizeDay, timeToMinutes } from '../../common/dates/date-time.helper';
+import { Horario } from '../horario/entities/horario.entity';
 
 
 
@@ -16,6 +20,12 @@ export class MesasService {
 
     @InjectRepository(Restaurante)
     private readonly restauranteRepository: Repository<Restaurante>,
+
+    @InjectRepository(Reserva)
+    private readonly reservasRepository: Repository<Reserva>,
+
+    @InjectRepository(Horario)
+    private readonly horariosRepository: Repository<Horario>,
   ) {}
 
   async crearMesa(dto: CrearMesaDto): Promise<Mesa> {
@@ -44,10 +54,15 @@ export class MesasService {
       throw new NotFoundException(`No se encontró una mesa con ese ID.`);
     }
 
-    for (const [key, value] of Object.entries(dto)) {
-      if (value !== undefined && value !== '') {
-        (mesa as any)[key] = value;
-      }
+    if (dto.idRestaurante !== undefined) {
+      const restaurante = await this.restauranteRepository.findOne({ where: { idRestaurante: dto.idRestaurante } });
+      if (!restaurante) throw new NotFoundException(`No se encontró un restaurante con ese ID.`);
+      mesa.restaurante = restaurante;
+    }
+    if (dto.numeroMesa !== undefined) mesa.numeroMesa = dto.numeroMesa;
+    if (dto.cantidadSillas !== undefined) mesa.cantidadSillas = dto.cantidadSillas;
+    if (mesa.cantidadSillas < 1) {
+      throw new UnprocessableEntityException('La cantidad de sillas debe ser mayor que cero.');
     }
     return await this.mesasRepository.save(mesa);
   }
@@ -123,5 +138,45 @@ export class MesasService {
 
       return mesa;
     }
+
+  async getDisponiblesPorRestaurante(idRestaurante: number, fecha: string, hora: string) {
+    if (!isValidDateOnly(fecha)) throw new BadRequestException('La fecha debe tener el formato YYYY-MM-DD y ser válida.');
+    if (!isValidTime(hora)) throw new BadRequestException('La hora debe tener el formato HH:mm y ser válida.');
+
+    const restaurante = await this.restauranteRepository.findOne({ where: { idRestaurante, estado: true } });
+    if (!restaurante) throw new NotFoundException(`Restaurante con id "${idRestaurante}" no encontrado o inactivo.`);
+
+    const requestedMinutes = timeToMinutes(hora);
+    const day = getDayName(fecha);
+    const horarioValido = (await this.horariosRepository.find({
+      where: { restaurante: { idRestaurante }, estado: true },
+    })).some((horario) => {
+      const open = timeToMinutes(horario.horaApertura);
+      const close = timeToMinutes(horario.horaCierre);
+      return normalizeDay(horario.diaSemana) === day && requestedMinutes >= open && requestedMinutes < close;
+    });
+    if (!horarioValido) return { data: [], total: 0 };
+
+    const horaFin = addMinutesToTime(hora, 30);
+
+    const query = this.mesasRepository
+      .createQueryBuilder('mesa')
+      .innerJoin('mesa.restaurante', 'restaurante')
+      .leftJoin(
+        Reserva,
+        'reserva',
+        'reserva.idMesa = mesa.idMesa AND reserva.fechaReserva = :fecha AND reserva.horaInicio < :horaFin AND reserva.horaFin > :hora AND reserva.estado IN (:...estados)',
+        { fecha, hora, horaFin, estados: [EstadoReserva.CONFIRMADA, EstadoReserva.PENDIENTE] },
+      )
+      .where('mesa.idRestaurante = :idRestaurante', { idRestaurante })
+      .andWhere('mesa.estado = :estado', { estado: true })
+      .andWhere('restaurante.estado = :restauranteEstado', { restauranteEstado: true })
+      .andWhere('reserva.idReserva IS NULL')
+      .select(['mesa.idMesa', 'mesa.numeroMesa', 'mesa.cantidadSillas', 'mesa.estado'])
+      .orderBy('mesa.numeroMesa', 'ASC');
+
+    const data = await query.getMany();
+    return { data, total: data.length };
+  }
 
 }
