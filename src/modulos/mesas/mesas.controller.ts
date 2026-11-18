@@ -9,12 +9,13 @@ import {
   Query,
 } from '@nestjs/common';
 import { MesasService } from './mesas.service';
-import { ApiBody } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CrearMesaDto } from './dto/crearMesaDto';
 import { ActualizarMesaDto } from './dto/actualizarMesaDto';
 import { Mesa } from './entities/mesa.entity';
 
 @Controller('mesas')
+@ApiTags('Mesas')
 export class MesasController {
   constructor(private readonly mesasService: MesasService) {}
 
@@ -77,5 +78,18 @@ export class MesasController {
   @Get('GetMesaById/:idMesa')
   GetMesaById(@Param('idMesa', ParseIntPipe) idMesa: number) {
     return this.mesasService.getMesaById(idMesa);
+  }
+
+  @Get('restaurante/:idRestaurante/disponibles')
+  @ApiOperation({ summary: 'Consultar mesas disponibles para una fecha y hora' })
+  @ApiParam({ name: 'idRestaurante', type: Number })
+  @ApiQuery({ name: 'fecha', example: '2026-11-20' })
+  @ApiQuery({ name: 'hora', example: '19:00' })
+  getDisponiblesPorRestaurante(
+    @Param('idRestaurante', ParseIntPipe) idRestaurante: number,
+    @Query('fecha') fecha: string,
+    @Query('hora') hora: string,
+  ) {
+    return this.mesasService.getDisponiblesPorRestaurante(idRestaurante, fecha, hora);
   }
 }
